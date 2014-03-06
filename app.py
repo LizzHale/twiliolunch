@@ -4,6 +4,7 @@ from flask import Flask
 from flask import Response
 from flask import request
 from flask import render_template
+from flask import redirect
 from twilio import twiml
 from twilio.rest import TwilioRestClient
 
@@ -54,6 +55,34 @@ def hello():
     response.say('Hello there! You have successfully configured a web hook.')
     response.say('Good luck on your Twilio quest!', voice='woman')
     return Response(str(response), mimetype='text/xml')
+
+@app.route("/incoming/sms", methods=['POST', 'GET'])
+def insms():
+    # return a response : I just responded to a text message.Huzzah!
+    response = twiml.Response()
+    response.sms('i just responded to a text message. huzzah!')
+    return Response(str(response), mimetype='text/xml')
+
+
+@app.route("/incoming/call", methods=['POST', 'GET'])
+def incall():
+    # return a response: I just responded to a phone call. Huzzah!
+    response = twiml.Response()
+    with response.gather(timeout="5", action="/handle-key", numDigits=3, method="POST", finishOnKey="*") as g:
+        g.say("Please enter your three digit passcode and press star.")
+    return Response(str(response), mimetype='text/xml')
+
+@app.route("/handle-key", methods=['GET', 'POST'])
+def handle_key():
+    digit_pressed = request.values.get('Digits', None)
+    if digit_pressed == "123":
+        response = twiml.Response()
+        response.say("You are correct.")
+        return str(response)
+    else:
+        response = twiml.Response()
+        response.say("You are wrong.")
+        return redirect("/incoming/call")
 
 if __name__ == '__main__':
     # Note that in production, you would want to disable debugging
